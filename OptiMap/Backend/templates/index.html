@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptiMap - Planificador de Rutas RD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗺️ OptiMap</h1>
+            <p>Planificador Inteligente de Rutas - República Dominicana</p>
+        </div>
+
+        <div class="main-content">
+            <div class="controls-panel">
+                <div class="section-title">Configuración de Ruta</div>
+                <div class="form-group">
+                    <label for="origen">Ciudad de Origen:</label>
+                    <select id="origen" class="form-control">
+                        <option value="">Seleccionar ciudad...</option>
+                        <option value="Santo Domingo">Santo Domingo</option>
+                        <option value="Santiago">Santiago</option>
+                        <option value="La Romana">La Romana</option>
+                        <option value="Puerto Plata">Puerto Plata</option>
+                        <option value="San Cristóbal">San Cristóbal</option>
+                        <option value="San Pedro de Macorís">San Pedro de Macorís</option>
+                    </select>
+                </div>
+                <div class="form-group" id="destinosGroup" style="display: none;">
+                    <label>Destinos Personalizados:</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item"><input type="checkbox" value="Santo Domingo"> Santo Domingo</div>
+                        <div class="checkbox-item"><input type="checkbox" value="Santiago"> Santiago</div>
+                        <div class="checkbox-item"><input type="checkbox" value="La Romana"> La Romana</div>
+                        <div class="checkbox-item"><input type="checkbox" value="Puerto Plata"> Puerto Plata</div>
+                        <div class="checkbox-item"><input type="checkbox" value="San Cristóbal"> San Cristóbal</div>
+                        <div class="checkbox-item"><input type="checkbox" value="San Pedro de Macorís"> San Pedro de Macorís</div>
+                    </div>
+                </div>
+                <div class="buttons-container">
+                    <button class="btn btn-primary" onclick="calcularTSP()">🚗 Ruta Óptima (TSP)</button>
+                    <button class="btn btn-success" onclick="calcularMST()">🌐 Conexión Mínima (MST)</button>
+                    <button class="btn btn-warning" onclick="rutaPersonalizada()">⚙️ Ruta Personalizada</button>
+                </div>
+            </div>
+            <div class="map-container">
+                <div class="section-title">Mapa Interactivo</div>
+                <svg class="map-svg" id="mapaSvg"></svg>
+            </div>
+        </div>
+
+        <div class="results-panel">
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Calculando ruta óptima...</p>
+            </div>
+            <div id="resultados" style="display: none;">
+                <div class="result-card">
+                    <div class="result-title">
+                        <span id="resultIcon">🚗</span>
+                        <span id="resultTitle">Resultado</span>
+                    </div>
+                    <div class="result-content" id="resultContent">Selecciona un algoritmo para ver los resultados</div>
+                </div>
+                <div class="metrics">
+                    <div class="metric-item"><div class="metric-value" id="distanciaTotal">0</div><div class="metric-label">Distancia Total (km)</div></div>
+                    <div class="metric-item"><div class="metric-value" id="tiempoCalculo">0</div><div class="metric-label">Tiempo Cálculo (ms)</div></div>
+                    <div class="metric-item"><div class="metric-value" id="ciudadesVisitadas">0</div><div class="metric-label">Ciudades Visitadas</div></div>
+                    <div class="metric-item"><div class="metric-value" id="algoritmUsado">-</div><div class="metric-label">Algoritmo Usado</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/optimap.js') }}"></script>
+</body>
+</html>
