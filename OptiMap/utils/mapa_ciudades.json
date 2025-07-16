@@ -1,0 +1,48 @@
+{
+  "ciudades": [
+    "Santo Domingo",
+    "Santiago",
+    "La Romana",
+    "Puerto Plata",
+    "San Cristóbal",
+    "San Pedro de Macorís"
+  ],
+  "distancias": {
+    "Santo Domingo": {
+      "Santiago": 155,
+      "La Romana": 125,
+      "Puerto Plata": 210,
+      "San Cristóbal": 28,
+      "San Pedro de Macorís": 71
+    },
+    "Santiago": {
+      "Santo Domingo": 155,
+      "Puerto Plata": 45,
+      "La Romana": 225,
+      "San Pedro de Macorís": 210
+    },
+    "La Romana": {
+      "Santo Domingo": 125,
+      "Santiago": 225,
+      "San Pedro de Macorís": 45,
+      "San Cristóbal": 145
+    },
+    "Puerto Plata": {
+      "Santo Domingo": 210,
+      "Santiago": 45,
+      "San Cristóbal": 185
+    },
+    "San Cristóbal": {
+      "Santo Domingo": 28,
+      "La Romana": 145,
+      "Puerto Plata": 185,
+      "San Pedro de Macorís": 105
+    },
+    "San Pedro de Macorís": {
+      "Santo Domingo": 71,
+      "Santiago": 210,
+      "La Romana": 45,
+      "San Cristóbal": 105
+    }
+  }
+}
