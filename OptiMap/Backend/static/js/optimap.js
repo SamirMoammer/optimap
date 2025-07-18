@@ -1,12 +1,19 @@
-// js/optimap.js completo
+let rutaPersonalizadaActiva = false;
+
+function mostrarAlert(mensaje, tipo = 'error') {
+    const alertContainer = document.getElementById('alertContainer');
+    const alertClass = tipo === 'error' ? 'alert-error' : 'alert-success';
+    alertContainer.innerHTML = `<div class="alert ${alertClass}">${mensaje}</div>`;
+    setTimeout(() => { alertContainer.innerHTML = ''; }, 4000);
+}
 
 function mostrarLoading() {
-    document.getElementById("loading").classList.add("active");
+    document.getElementById("loading").style.display = "block";
     document.getElementById("resultados").style.display = "none";
 }
 
 function ocultarLoading() {
-    document.getElementById("loading").classList.remove("active");
+    document.getElementById("loading").style.display = "none";
     document.getElementById("resultados").style.display = "block";
 }
 
@@ -38,13 +45,49 @@ function resaltarRuta(ruta, tipo) {
     }
 }
 
+function toggleRutaPersonalizada() {
+    const destinosGroup = document.getElementById('destinosGroup');
+    const btnCalcular = document.getElementById('btnCalcularPersonalizada');
+    rutaPersonalizadaActiva = !rutaPersonalizadaActiva;
+    if (rutaPersonalizadaActiva) {
+        destinosGroup.style.display = 'block';
+        btnCalcular.style.display = 'block';
+        document.querySelectorAll('#destinosGroup input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+    } else {
+        destinosGroup.style.display = 'none';
+        btnCalcular.style.display = 'none';
+        limpiarRutas();
+    }
+}
+
+function validarRutaPersonalizada() {
+    const origen = document.getElementById("origen").value;
+    const destinos = Array.from(document.querySelectorAll('#destinosGroup input[type="checkbox"]:checked')).map(cb => cb.value);
+    if (!origen) {
+        mostrarAlert("⚠️ Selecciona una ciudad de origen");
+        return false;
+    }
+    if (destinos.length === 0) {
+        mostrarAlert("⚠️ Selecciona al menos un destino");
+        return false;
+    }
+    const ciudadesUnicas = new Set([origen, ...destinos]);
+    if (ciudadesUnicas.size < 2) {
+        mostrarAlert("⚠️ Necesitas al menos 2 ciudades diferentes para crear una ruta");
+        return false;
+    }
+    return true;
+}
+
 function calcularTSP() {
     const origen = document.getElementById("origen").value;
     if (!origen) {
-        alert("Selecciona una ciudad de origen");
+        mostrarAlert("⚠️ Selecciona una ciudad de origen");
         return;
     }
+    limpiarRutas();
     mostrarLoading();
+    const startTime = performance.now();
     fetch("/api/tsp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -52,24 +95,61 @@ function calcularTSP() {
     })
     .then(res => res.json())
     .then(data => {
-        actualizarResultados("Ruta Óptima (TSP)", `<strong>Ruta:</strong> ${data.ruta.join(' → ')}<br><strong>Distancia:</strong> ${data.distancia} km`, data.distancia, "45", data.ruta.length, "TSP Backtracking", "🚗");
+        const endTime = performance.now();
+        const tiempoCalculo = Math.round(endTime - startTime);
+        if (data.error) {
+            mostrarAlert(`❌ Error: ${data.error}`);
+            ocultarLoading();
+            return;
+        }
+        actualizarResultados(
+            "Ruta Óptima (TSP)", 
+            `<strong>Ruta:</strong> ${data.ruta.join(' → ')}<br><strong>Distancia:</strong> ${data.distancia} km`, 
+            data.distancia, 
+            tiempoCalculo, 
+            data.ruta.length - 1, 
+            "TSP Backtracking", 
+            "🚗"
+        );
         resaltarRuta(data.ruta, "tsp");
         ocultarLoading();
+        mostrarAlert("✅ Ruta óptima calculada exitosamente", "success");
     })
-    .catch(err => { console.error(err); ocultarLoading(); });
+    .catch(err => { 
+        console.error(err); 
+        mostrarAlert("❌ Error al calcular la ruta"); 
+        ocultarLoading(); 
+    });
 }
 
 function calcularMST() {
+    limpiarRutas();
     mostrarLoading();
+    const startTime = performance.now();
     fetch("/api/mst")
     .then(res => res.json())
     .then(data => {
+        const endTime = performance.now();
+        const tiempoCalculo = Math.round(endTime - startTime);
+        if (data.error) {
+            mostrarAlert(`❌ Error: ${data.error}`);
+            ocultarLoading();
+            return;
+        }
         let conexiones = "<strong>Conexiones:</strong><br>";
         data.aristas.forEach(a => {
             conexiones += `${a.origen} ↔ ${a.destino} (${a.peso} km)<br>`;
         });
-        actualizarResultados("Conexión Mínima (MST)", conexiones, data.costo_total, "12", data.aristas.length, "Prim (Greedy)", "🌐");
-        limpiarRutas();
+        actualizarResultados(
+            "Conexión Mínima (MST)", 
+            conexiones, 
+            data.costo_total, 
+            tiempoCalculo, 
+            data.aristas.length, 
+            "Prim (Greedy)", 
+            "🌐"
+        );
+        // Resaltar aristas del MST
         data.aristas.forEach(a => {
             const edge1 = document.getElementById(`edge-${a.origen}-${a.destino}`);
             const edge2 = document.getElementById(`edge-${a.destino}-${a.origen}`);
@@ -77,23 +157,25 @@ function calcularMST() {
             if (edge2) edge2.classList.add("highlighted", "mst");
         });
         ocultarLoading();
+        mostrarAlert("✅ Árbol de expansión mínima calculado exitosamente", "success");
     })
-    .catch(err => { console.error(err); ocultarLoading(); });
+    .catch(err => { 
+        console.error(err); 
+        mostrarAlert("❌ Error al calcular el MST"); 
+        ocultarLoading(); 
+    });
 }
 
-function rutaPersonalizada() {
+function calcularRutaPersonalizada() {
+    if (!validarRutaPersonalizada()) {
+        return;
+    }
     const origen = document.getElementById("origen").value;
-    const destinos = Array.from(document.querySelectorAll("#destinosGroup input:checked")).map(cb => cb.value);
-    if (!origen) {
-        alert("Selecciona ciudad de origen");
-        return;
-    }
-    if (destinos.length === 0) {
-        alert("Selecciona al menos un destino");
-        return;
-    }
-    const subconjunto = [origen, ...destinos];
+    const destinos = Array.from(document.querySelectorAll('#destinosGroup input[type="checkbox"]:checked')).map(cb => cb.value);
+    const subconjunto = Array.from(new Set([origen, ...destinos])); // Eliminar duplicados
+    limpiarRutas();
     mostrarLoading();
+    const startTime = performance.now();
     fetch("/api/tsp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -101,9 +183,29 @@ function rutaPersonalizada() {
     })
     .then(res => res.json())
     .then(data => {
-        actualizarResultados("Ruta Personalizada", `<strong>Ruta:</strong> ${data.ruta.join(' → ')}<br><strong>Distancia:</strong> ${data.distancia} km`, data.distancia, "28", data.ruta.length, "TSP Personalizado", "⚙️");
+        const endTime = performance.now();
+        const tiempoCalculo = Math.round(endTime - startTime);
+        if (data.error) {
+            mostrarAlert(`❌ Error: ${data.error}`);
+            ocultarLoading();
+            return;
+        }
+        actualizarResultados(
+            "Ruta Personalizada",
+            `<strong>Ruta:</strong> ${data.ruta.join(' → ')}<br><strong>Distancia:</strong> ${data.distancia} km`, 
+            data.distancia, 
+            tiempoCalculo, 
+            subconjunto.length, 
+            "TSP Personalizado", 
+            "⚙️"
+        );
         resaltarRuta(data.ruta, "custom");
         ocultarLoading();
+        mostrarAlert("✅ Ruta personalizada calculada exitosamente", "success");
     })
-    .catch(err => { console.error(err); ocultarLoading(); });
+    .catch(err => { 
+        console.error(err); 
+        mostrarAlert("❌ Error al calcular la ruta personalizada"); 
+        ocultarLoading(); 
+    });
 }

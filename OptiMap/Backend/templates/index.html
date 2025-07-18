@@ -2,78 +2,384 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OptiMap - Planificador de Rutas RD</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <meta name="viewport" content="width=700, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px;}
+        .header { text-align: center; color: white; margin-bottom: 30px;}
+        .header h1 { font-size: 3em; margin-bottom: 10px;}
+        .main-content { display: grid; grid-template-columns: 350px 1fr; gap: 30px; margin-bottom: 30px;}
+        .controls-panel { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);}
+        .section-title { font-size: 1.4em; font-weight: 600; margin-bottom: 20px; color: #4a5568;}
+        .form-group { margin-bottom: 18px;}
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #4a5568;}
+        .form-control { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px;}
+        .checkbox-group { display: grid; grid-template-columns: 1fr; gap: 10px;}
+        .checkbox-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px;}
+        .checkbox-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: #667eea;}
+        .buttons-container { display: flex; flex-direction: column; gap: 12px;}
+        .btn { padding: 15px 20px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer;}
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white;}
+        .btn-success { background: linear-gradient(135deg, #48bb78, #38a169); color: white;}
+        .btn-warning { background: linear-gradient(135deg, #ed8936, #dd6b20); color: white;}
+        .map-container { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);}
+        .map-svg { width: 100%; height: 420px; border-radius: 15px; border: 2px solid #e2e8f0;}
+        .city-node { fill: #667eea; stroke: #4c51bf; stroke-width: 3; cursor: pointer; transition: all 0.3s;}
+        .city-node.selected { fill: #ed8936; stroke: #dd6b20; stroke-width: 4;}
+        .city-node.origin { fill: #48bb78; stroke: #38a169; stroke-width: 4;}
+        .city-label { text-anchor: middle; fill: #2d3748; font-size: 15px; font-weight: 600; pointer-events: none;}
+        .edge { stroke: #cbd5e0; stroke-width: 2; opacity: 0.7;}
+        .edge.active { stroke: #e53e3e; stroke-width: 4; opacity: 1; animation: pulse 2s infinite;}
+        .edge.mst { stroke: #48bb78; stroke-width: 4; opacity: 1;}
+        .edge-label { text-anchor: middle; fill: #4a5568; font-size: 13px; font-weight: 500; pointer-events: none;}
+        .results-panel { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);}
+        .result-card { background: linear-gradient(135deg, #f7fafc, #edf2f7); border-radius: 15px; padding: 20px; margin-bottom: 20px; border-left: 5px solid #667eea;}
+        .result-title { font-size: 1.3em; font-weight: 600; margin-bottom: 15px; color: #2d3748;}
+        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;}
+        .metric-item { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; border-radius: 15px; text-align: center;}
+        .metric-value { font-size: 2em; font-weight: 700; margin-bottom: 5px;}
+        .loading { text-align: center; padding: 35px;}
+        .spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 18px;}
+        .alert { padding: 15px; margin-bottom: 20px; border-radius: 10px; font-weight: 500;}
+        .alert-warning { background: #fed7aa; color: #9a3412; border: 1px solid #fdba74;}
+        .alert-success { background: #bbf7d0; color: #166534; border: 1px solid #86efac;}
+        @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+        @keyframes pulse { 0%, 100% { opacity: 1;} 50% { opacity: 0.5; } }
+        @media (max-width: 800px) {
+            .main-content { grid-template-columns: 1fr; gap: 16px;}
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🗺️ OptiMap</h1>
-            <p>Planificador Inteligente de Rutas - República Dominicana</p>
-        </div>
-
-        <div class="main-content">
-            <div class="controls-panel">
-                <div class="section-title">Configuración de Ruta</div>
-                <div class="form-group">
-                    <label for="origen">Ciudad de Origen:</label>
-                    <select id="origen" class="form-control">
-                        <option value="">Seleccionar ciudad...</option>
-                        <option value="Santo Domingo">Santo Domingo</option>
-                        <option value="Santiago">Santiago</option>
-                        <option value="La Romana">La Romana</option>
-                        <option value="Puerto Plata">Puerto Plata</option>
-                        <option value="San Cristóbal">San Cristóbal</option>
-                        <option value="San Pedro de Macorís">San Pedro de Macorís</option>
-                    </select>
-                </div>
-                <div class="form-group" id="destinosGroup" style="display: none;">
-                    <label>Destinos Personalizados:</label>
-                    <div class="checkbox-group">
-                        <div class="checkbox-item"><input type="checkbox" value="Santo Domingo"> Santo Domingo</div>
-                        <div class="checkbox-item"><input type="checkbox" value="Santiago"> Santiago</div>
-                        <div class="checkbox-item"><input type="checkbox" value="La Romana"> La Romana</div>
-                        <div class="checkbox-item"><input type="checkbox" value="Puerto Plata"> Puerto Plata</div>
-                        <div class="checkbox-item"><input type="checkbox" value="San Cristóbal"> San Cristóbal</div>
-                        <div class="checkbox-item"><input type="checkbox" value="San Pedro de Macorís"> San Pedro de Macorís</div>
-                    </div>
-                </div>
-                <div class="buttons-container">
-                    <button class="btn btn-primary" onclick="calcularTSP()">🚗 Ruta Óptima (TSP)</button>
-                    <button class="btn btn-success" onclick="calcularMST()">🌐 Conexión Mínima (MST)</button>
-                    <button class="btn btn-warning" onclick="rutaPersonalizada()">⚙️ Ruta Personalizada</button>
+<div class="container">
+    <div class="header">
+        <h1>🗺️ OptiMap</h1>
+        <p>Planificador Inteligente de Rutas - República Dominicana</p>
+    </div>
+    <div class="main-content">
+        <div class="controls-panel">
+            <div class="section-title">⚙️ Configuración de Ruta</div>
+            <div id="alertContainer"></div>
+            <div class="form-group">
+                <label for="origen">🏠 Ciudad de Origen:</label>
+                <select id="origen" class="form-control">
+                    <option value="">Seleccionar ciudad...</option>
+                    <option value="Santo Domingo">Santo Domingo</option>
+                    <option value="Santiago">Santiago</option>
+                    <option value="La Romana">La Romana</option>
+                    <option value="Puerto Plata">Puerto Plata</option>
+                    <option value="San Cristóbal">San Cristóbal</option>
+                    <option value="San Pedro de Macorís">San Pedro de Macorís</option>
+                </select>
+            </div>
+            <div class="form-group" id="destinosGroup" style="display: none;">
+                <label>🎯 Destinos a Visitar:</label>
+                <div class="checkbox-group">
+                    <div class="checkbox-item"><input type="checkbox" value="Santo Domingo" id="dest-sd"><label for="dest-sd">Santo Domingo</label></div>
+                    <div class="checkbox-item"><input type="checkbox" value="Santiago" id="dest-stgo"><label for="dest-stgo">Santiago</label></div>
+                    <div class="checkbox-item"><input type="checkbox" value="La Romana" id="dest-laromana"><label for="dest-laromana">La Romana</label></div>
+                    <div class="checkbox-item"><input type="checkbox" value="Puerto Plata" id="dest-pp"><label for="dest-pp">Puerto Plata</label></div>
+                    <div class="checkbox-item"><input type="checkbox" value="San Cristóbal" id="dest-sc"><label for="dest-sc">San Cristóbal</label></div>
+                    <div class="checkbox-item"><input type="checkbox" value="San Pedro de Macorís" id="dest-spm"><label for="dest-spm">San Pedro de Macorís</label></div>
                 </div>
             </div>
-            <div class="map-container">
-                <div class="section-title">Mapa Interactivo</div>
-                <svg class="map-svg" id="mapaSvg"></svg>
+            <div class="buttons-container">
+                <button class="btn btn-primary" onclick="calcularTSP()">🚗 Ruta Más Corta (TSP)</button>
+                <button class="btn btn-success" onclick="calcularMST()">🌐 Red Mínima (MST)</button>
+                <button class="btn btn-warning" onclick="toggleRutaPersonalizada()">⚙️ Ruta Personalizada</button>
+                <button class="btn btn-warning" id="btnCalcularPersonalizada" onclick="calcularRutaPersonalizada()" style="display: none;">
+                    ✅ Calcular Ruta Personalizada
+                </button>
             </div>
         </div>
-
-        <div class="results-panel">
-            <div class="loading" id="loading">
-                <div class="spinner"></div>
-                <p>Calculando ruta óptima...</p>
+        <div class="map-container">
+            <div class="section-title">🗺️ Mapa Interactivo</div>
+            <svg class="map-svg" id="mapaSvg" viewBox="0 0 700 400">
+                <!-- Fondo -->
+                <rect width="700" height="400" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+                <!-- Aristas -->
+                <line id="edge-Santo Domingo-Santiago" class="edge" x1="420" y1="300" x2="170" y2="110" />
+                <line id="edge-Santo Domingo-La Romana" class="edge" x1="420" y1="300" x2="610" y2="350" />
+                <line id="edge-Santo Domingo-Puerto Plata" class="edge" x1="420" y1="300" x2="110" y2="40" />
+                <line id="edge-Santo Domingo-San Cristóbal" class="edge" x1="420" y1="300" x2="360" y2="330" />
+                <line id="edge-Santo Domingo-San Pedro de Macorís" class="edge" x1="420" y1="300" x2="520" y2="275" />
+                <line id="edge-Santiago-Puerto Plata" class="edge" x1="170" y1="110" x2="110" y2="40" />
+                <line id="edge-Santiago-La Romana" class="edge" x1="170" y1="110" x2="610" y2="350" />
+                <line id="edge-Santiago-San Pedro de Macorís" class="edge" x1="170" y1="110" x2="520" y2="275" />
+                <line id="edge-La Romana-San Pedro de Macorís" class="edge" x1="610" y1="350" x2="520" y2="275" />
+                <line id="edge-La Romana-San Cristóbal" class="edge" x1="610" y1="350" x2="360" y2="330" />
+                <line id="edge-Puerto Plata-San Cristóbal" class="edge" x1="110" y1="40" x2="360" y2="330" />
+                <line id="edge-San Cristóbal-San Pedro de Macorís" class="edge" x1="360" y1="330" x2="520" y2="275" />
+                <!-- Etiquetas de distancia -->
+                <text class="edge-label" x="295" y="205">155 km</text>
+                <text class="edge-label" x="515" y="325">125 km</text>
+                <text class="edge-label" x="265" y="170">210 km</text>
+                <text class="edge-label" x="390" y="315">28 km</text>
+                <text class="edge-label" x="470" y="287">71 km</text>
+                <text class="edge-label" x="140" y="75">45 km</text>
+                <text class="edge-label" x="390" y="230">225 km</text>
+                <text class="edge-label" x="345" y="192">210 km</text>
+                <text class="edge-label" x="565" y="312">45 km</text>
+                <text class="edge-label" x="485" y="340">145 km</text>
+                <text class="edge-label" x="235" y="185">185 km</text>
+                <text class="edge-label" x="440" y="302">105 km</text>
+                <!-- Nodos -->
+                <circle id="node-Santo Domingo" class="city-node" cx="420" cy="300" r="22" onclick="selectCity('Santo Domingo')"/>
+                <circle id="node-Santiago" class="city-node" cx="170" cy="110" r="22" onclick="selectCity('Santiago')"/>
+                <circle id="node-La Romana" class="city-node" cx="610" cy="350" r="22" onclick="selectCity('La Romana')"/>
+                <circle id="node-Puerto Plata" class="city-node" cx="110" cy="40" r="22" onclick="selectCity('Puerto Plata')"/>
+                <circle id="node-San Cristóbal" class="city-node" cx="360" cy="330" r="22" onclick="selectCity('San Cristóbal')"/>
+                <circle id="node-San Pedro de Macorís" class="city-node" cx="520" cy="275" r="22" onclick="selectCity('San Pedro de Macorís')"/>
+                <!-- Etiquetas de ciudades -->
+                <text class="city-label" x="420" y="285">Santo Domingo</text>
+                <text class="city-label" x="170" y="95">Santiago</text>
+                <text class="city-label" x="610" y="370">La Romana</text>
+                <text class="city-label" x="110" y="30">Puerto Plata</text>
+                <text class="city-label" x="360" y="355">San Cristóbal</text>
+                <text class="city-label" x="520" y="265">San Pedro de Macorís</text>
+            </svg>
+        </div>
+    </div>
+    <div class="results-panel">
+        <div class="loading" id="loading" style="display:none;">
+            <div class="spinner"></div>
+            <p>Calculando ruta óptima...</p>
+        </div>
+        <div id="resultados">
+            <div class="result-card">
+                <div class="result-title">
+                    <span id="resultIcon">🎯</span>
+                    <span id="resultTitle">Resultado del Algoritmo</span>
+                </div>
+                <div class="result-content" id="resultContent">
+                    Selecciona una ciudad de origen y un algoritmo para calcular la ruta óptima.
+                    Puedes hacer clic en las ciudades del mapa para seleccionarlas.
+                </div>
             </div>
-            <div id="resultados" style="display: none;">
-                <div class="result-card">
-                    <div class="result-title">
-                        <span id="resultIcon">🚗</span>
-                        <span id="resultTitle">Resultado</span>
-                    </div>
-                    <div class="result-content" id="resultContent">Selecciona un algoritmo para ver los resultados</div>
-                </div>
-                <div class="metrics">
-                    <div class="metric-item"><div class="metric-value" id="distanciaTotal">0</div><div class="metric-label">Distancia Total (km)</div></div>
-                    <div class="metric-item"><div class="metric-value" id="tiempoCalculo">0</div><div class="metric-label">Tiempo Cálculo (ms)</div></div>
-                    <div class="metric-item"><div class="metric-value" id="ciudadesVisitadas">0</div><div class="metric-label">Ciudades Visitadas</div></div>
-                    <div class="metric-item"><div class="metric-value" id="algoritmUsado">-</div><div class="metric-label">Algoritmo Usado</div></div>
-                </div>
+            <div class="metrics">
+                <div class="metric-item"><div class="metric-value" id="distanciaTotal">0</div><div class="metric-label">Distancia Total (km)</div></div>
+                <div class="metric-item"><div class="metric-value" id="tiempoCalculo">0</div><div class="metric-label">Tiempo Cálculo (ms)</div></div>
+                <div class="metric-item"><div class="metric-value" id="ciudadesVisitadas">0</div><div class="metric-label">Ciudades Visitadas</div></div>
+                <div class="metric-item"><div class="metric-value" id="algoritmoUsado">-</div><div class="metric-label">Algoritmo Usado</div></div>
             </div>
         </div>
     </div>
+</div>
+<script>
+const distancias = {
+    "Santo Domingo": {"Santiago": 155, "La Romana": 125, "Puerto Plata": 210, "San Cristóbal": 28, "San Pedro de Macorís": 71},
+    "Santiago": {"Santo Domingo": 155, "Puerto Plata": 45, "La Romana": 225, "San Pedro de Macorís": 210, "San Cristóbal": 185},
+    "La Romana": {"Santo Domingo": 125, "Santiago": 225, "San Pedro de Macorís": 45, "San Cristóbal": 145, "Puerto Plata": 270},
+    "Puerto Plata": {"Santiago": 45, "Santo Domingo": 210, "San Cristóbal": 185, "San Pedro de Macorís": 255, "La Romana": 270},
+    "San Cristóbal": {"Santo Domingo": 28, "Santiago": 185, "La Romana": 145, "Puerto Plata": 185, "San Pedro de Macorís": 105},
+    "San Pedro de Macorís": {"Santo Domingo": 71, "Santiago": 210, "La Romana": 45, "San Cristóbal": 105, "Puerto Plata": 255}
+};
+let ciudadOrigen = '';
+let rutaPersonalizadaActiva = false;
 
-    <script src="{{ url_for('static', filename='js/optimap.js') }}"></script>
+function showAlert(message, type = 'warning') {
+    const alertContainer = document.getElementById('alertContainer');
+    alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+    setTimeout(() => { alertContainer.innerHTML = ''; }, 3000);
+}
+function selectCity(ciudad) {
+    document.getElementById('origen').value = ciudad;
+    ciudadOrigen = ciudad;
+    updateMapDisplay();
+    showAlert(`Ciudad de origen seleccionada: ${ciudad}`, 'success');
+}
+function updateMapDisplay() {
+    document.querySelectorAll('.city-node').forEach(node => node.classList.remove('selected', 'origin'));
+    if (ciudadOrigen) {
+        const originNode = document.getElementById(`node-${ciudadOrigen}`);
+        if (originNode) originNode.classList.add('origin');
+    }
+}
+function resetEdges() {
+    document.querySelectorAll('.edge').forEach(edge => edge.classList.remove('active', 'mst'));
+}
+function highlightEdges(edges, className = 'active') {
+    resetEdges();
+    edges.forEach(edge => {
+        const edgeElement = document.getElementById(`edge-${edge}`);
+        if (edgeElement) edgeElement.classList.add(className);
+    });
+}
+function toggleRutaPersonalizada() {
+    rutaPersonalizadaActiva = !rutaPersonalizadaActiva;
+    const destinosGroup = document.getElementById('destinosGroup');
+    const btnPersonalizada = document.getElementById('btnCalcularPersonalizada');
+    if (rutaPersonalizadaActiva) {
+        destinosGroup.style.display = 'block';
+        btnPersonalizada.style.display = 'block';
+        showAlert('Modo personalizado activado. Selecciona los destinos que deseas visitar.', 'success');
+    } else {
+        destinosGroup.style.display = 'none';
+        btnPersonalizada.style.display = 'none';
+        showAlert('Modo personalizado desactivado.');
+    }
+}
+function calcularTSP() {
+    const origen = document.getElementById('origen').value;
+    if (!origen) { showAlert('Por favor, selecciona una ciudad de origen.'); return; }
+    showLoading();
+    setTimeout(() => {
+        const startTime = performance.now();
+        const ciudades = Object.keys(distancias);
+        const ruta = tspNearestNeighbor(origen, ciudades);
+        const endTime = performance.now();
+        const tiempoCalculo = Math.round(endTime - startTime);
+        mostrarResultados({
+            algoritmo: 'TSP',
+            ruta: ruta.path,
+            distanciaTotal: ruta.distance,
+            tiempoCalculo: tiempoCalculo,
+            ciudadesVisitadas: ruta.path.length,
+            icon: '🚗',
+            title: 'Ruta Más Corta (TSP)'
+        });
+        const edges = [];
+        for (let i = 0; i < ruta.path.length - 1; i++) {
+            const ciudad1 = ruta.path[i];
+            const ciudad2 = ruta.path[i + 1];
+            edges.push(`${ciudad1}-${ciudad2}`); edges.push(`${ciudad2}-${ciudad1}`);
+        }
+        highlightEdges(edges);
+        hideLoading();
+    }, 1000);
+}
+function calcularMST() {
+    const origen = document.getElementById('origen').value;
+    if (!origen) { showAlert('Por favor, selecciona una ciudad de origen.'); return; }
+    showLoading();
+    setTimeout(() => {
+        const startTime = performance.now();
+        const mst = primMST();
+        const endTime = performance.now();
+        const tiempoCalculo = Math.round(endTime - startTime);
+        mostrarResultados({
+            algoritmo: 'MST',
+            ruta: mst.edges,
+            distanciaTotal: mst.totalWeight,
+            tiempoCalculo: tiempoCalculo,
+            ciudadesVisitadas: Object.keys(distancias).length,
+            icon: '🌐',
+            title: 'Árbol de Expansión Mínima (MST)'
+        });
+        const edges = mst.edges.map(edge => `${edge.from}-${edge.to}`);
+        highlightEdges(edges, 'mst');
+        hideLoading();
+    }, 1000);
+}
+function calcularRutaPersonalizada() {
+    const origen = document.getElementById('origen').value;
+    if (!origen) { showAlert('Por favor, selecciona una ciudad de origen.'); return; }
+    const destinosSeleccionados = [];
+    document.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => destinosSeleccionados.push(checkbox.value));
+    if (destinosSeleccionados.length === 0) { showAlert('Por favor, selecciona al menos un destino.'); return; }
+    showLoading();
+    setTimeout(() => {
+        const startTime = performance.now();
+        const ciudadesRuta = [origen, ...destinosSeleccionados.filter(d => d !== origen)];
+        const ruta = tspNearestNeighbor(origen, ciudadesRuta);
+        const endTime = performance.now();
+        const tiempoCalculo = Math.round(endTime - startTime);
+        mostrarResultados({
+            algoritmo: 'Personalizada',
+            ruta: ruta.path,
+            distanciaTotal: ruta.distance,
+            tiempoCalculo: tiempoCalculo,
+            ciudadesVisitadas: ruta.path.length,
+            icon: '⚙️',
+            title: 'Ruta Personalizada'
+        });
+        const edges = [];
+        for (let i = 0; i < ruta.path.length - 1; i++) {
+            const ciudad1 = ruta.path[i];
+            const ciudad2 = ruta.path[i + 1];
+            edges.push(`${ciudad1}-${ciudad2}`); edges.push(`${ciudad2}-${ciudad1}`);
+        }
+        highlightEdges(edges);
+        hideLoading();
+    }, 1000);
+}
+function tspNearestNeighbor(inicio, ciudades) {
+    const visitadas = new Set();
+    const ruta = [inicio];
+    let ciudadActual = inicio;
+    let distanciaTotal = 0;
+    visitadas.add(inicio);
+    while (visitadas.size < ciudades.length) {
+        let ciudadMasCercana = null, distanciaMinima = Infinity;
+        for (const ciudad of ciudades) {
+            if (!visitadas.has(ciudad) && distancias[ciudadActual][ciudad] < distanciaMinima) {
+                distanciaMinima = distancias[ciudadActual][ciudad];
+                ciudadMasCercana = ciudad;
+            }
+        }
+        if (ciudadMasCercana) {
+            ruta.push(ciudadMasCercana);
+            distanciaTotal += distanciaMinima;
+            visitadas.add(ciudadMasCercana);
+            ciudadActual = ciudadMasCercana;
+        } else break;
+    }
+    // Volver a origen (opcional)
+    // ruta.push(inicio);
+    // distanciaTotal += distancias[ciudadActual][inicio] || 0;
+    return { path: ruta, distance: distanciaTotal };
+}
+function primMST() {
+    const nodos = Object.keys(distancias);
+    const mstSet = new Set();
+    let totalWeight = 0;
+    const edges = [];
+    mstSet.add(nodos[0]);
+    while (mstSet.size < nodos.length) {
+        let minEdge = null, minWeight = Infinity;
+        for (const u of mstSet) {
+            for (const v of nodos) {
+                if (!mstSet.has(v) && distancias[u][v] !== undefined && distancias[u][v] < minWeight) {
+                    minEdge = {from: u, to: v};
+                    minWeight = distancias[u][v];
+                }
+            }
+        }
+        if (minEdge) {
+            edges.push({from: minEdge.from, to: minEdge.to});
+            totalWeight += minWeight;
+            mstSet.add(minEdge.to);
+        } else break;
+    }
+    return {edges, totalWeight};
+}
+function mostrarResultados(obj) {
+    document.getElementById('resultIcon').textContent = obj.icon || '🎯';
+    document.getElementById('resultTitle').textContent = obj.title || 'Resultado';
+    document.getElementById('resultContent').innerHTML = `
+        <b>Ruta:</b> ${obj.ruta.map(c=>typeof c==="string"?c:`${c.from} → ${c.to}`).join(' → ')}<br>
+        <b>Distancia:</b> ${obj.distanciaTotal} km
+    `;
+    document.getElementById('distanciaTotal').textContent = obj.distanciaTotal || 0;
+    document.getElementById('tiempoCalculo').textContent = obj.tiempoCalculo || 0;
+    document.getElementById('ciudadesVisitadas').textContent = obj.ciudadesVisitadas || 0;
+    document.getElementById('algoritmoUsado').textContent = obj.algoritmo || '-';
+}
+function showLoading() { document.getElementById('loading').style.display = ''; document.getElementById('resultados').style.display = 'none'; }
+function hideLoading() { document.getElementById('loading').style.display = 'none'; document.getElementById('resultados').style.display = ''; }
+// Inicialización
+document.getElementById('origen').addEventListener('change', function() {
+    ciudadOrigen = this.value;
+    updateMapDisplay();
+});
+updateMapDisplay();
+</script>
 </body>
 </html>

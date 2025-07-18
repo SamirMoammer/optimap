@@ -28,3 +28,4 @@ class GrafoCiudades:
 
     def obtener_ciudades(self):
         return self.ciudades
+    
